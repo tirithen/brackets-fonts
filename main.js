@@ -5,100 +5,72 @@ define(function () {
 
     var fonts = [ // Add or remove fonts here from Google Fonts
         'Default', // This item is needed to reset to the standard font
-        'Cutive Mono',
-        'Droid Sans Mono',
+        'Source Code Pro',
+        'Anonymous Pro',
         'Inconsolata',
-        'Nova Mono',
+        'Ubuntu Mono',
+        'Cousine',
+        'Droid Sans Mono',
+        'VT323',
         'Oxygen Mono',
         'PT Mono',
+        'Nova Mono',
         'Share Tech Mono',
-        'Ubuntu Mono'
+        'Cutive Mono',
+        'Open Sans'
     ];
-    
-	var CommandManager = brackets.getModule('command/CommandManager'),
+
+    var CommandManager = brackets.getModule('command/CommandManager'),
         Menus = brackets.getModule('command/Menus'),
         PreferencesManager = brackets.getModule('preferences/PreferencesManager'),
-        menuId = 'font-menu',
-        preferences = PreferencesManager.getPreferenceStorage('extensions.brackets-monospace-fonts'),
-		menu = Menus.getMenu(menuId) || Menus.addMenu('Font', menuId, Menus.AFTER, Menus.AppMenuBar.VIEW_MENU),
-        editorHolderElement = $('#editor-holder'),
-        bodyElement = $('body');
-            
-    function Font(name) {
-        this.name = name || '';
-        this.className = 'code-font-' + this.name.replace(/\s/g, '-').replace(/[^\w\d]/g, '').toLowerCase();
-        
-        if(name !== 'Default') {
-            this.nameForURI = this.name.replace(/\s/g, '+').replace(/[^\w\d\+]/g, '');
-            this.linkElement = $('<link class="' + this.className + 
-                                            '" href="http://fonts.googleapis.com/css?family=' +
-                                            this.nameForURI + '" rel="stylesheet" type="text/css">');
-            this.css = '.' + this.className + ' .CodeMirror {' +
-                            'font-family: \'' + this.name + '\', sans-serif !important;}';
-            this.hasLinkTagAppendedToBody = false;
-        }
-    }
-            
-    function getFontByName(name) {
-        var font, i = 0, length = fonts.length;
-        
-        for(i = 0; i < length; i++) {
-            if(fonts[i].name === name) {
-                font = fonts[i];
-                break;
-            }
-        }
-        
-        return font;
-    }
-    
-    function changeFont(name) {
-        var font = getFontByName(name);
-        
-        if(font) {
-            editorHolderElement.attr('class', '');
-            preferences.setValue('selectedFont', font.name);
-            
-            if(font.linkElement && font.className) {
-                if(!font.hasLinkTagAppendedToBody) {
-                    bodyElement.append(font.linkElement);
-                    font.hasLinkTagAppendedToBody = true;
-                }
-                
-                editorHolderElement.attr('class', font.className);
-            }
-        }
-    }
+        ExtensionUtils = brackets.getModule('utils/ExtensionUtils'),
+        preferences = PreferencesManager.getExtensionPrefs('brackets-fonts'),
+        fontMenu = Menus.getMenu('font-menu') || Menus.addMenu('Font', 'font-menu', Menus.AFTER, Menus.AppMenuBar.VIEW_MENU),
+        currentFont = null,
+        styleSheet = null,
+        linkElement = null;
 
-	function createFontMenu() {
-        fonts.forEach(function (font) {
-            CommandManager.register(font.name, font.className, function () {
-                changeFont(font.name);
-            });
-            menu.addMenuItem(font.className);	
-        });
-    }
-
-    function createFontStyleElement() {
-        var css = fonts.map(function (font) {
-            return font.css;
-        }).join(' ');
-
-        $('<style>' + css + '</style>').appendTo(bodyElement);
-    }
-
-	// Set default value if no font is specified
-	if (!preferences.getValue('selectedFont')) {
-		changeFont('Default');
-	}
-
-    // Create font instances
-    fonts = fonts.map(function (fontName) { 
-        return new Font(fontName); 
+    preferences.on('change', function () {
+        changeFont(preferences.get('selectedFont'));
     });
 
-    // Create menu items and set the font
-    createFontStyleElement();
+    function createFontMenuItem(name) {
+        var commandName = name.replace(/\s+/g, '.');
+        CommandManager.register(name, commandName, function () {
+            changeFont(name);
+        });
+        fontMenu.addMenuItem(commandName);
+    }
+
+    function createFontMenu() {
+        for (var i = 0; i < fonts.length; i++) {
+            createFontMenuItem(fonts[i]);
+        }
+    }
+
+    function unlinkFontStyles() {
+        if (linkElement !== null && linkElement.parentNode) {
+            linkElement.parentNode.removeChild(linkElement);
+        }
+        if (styleSheet !== null && styleSheet.parentNode) {
+            styleSheet.parentNode.removeChild(styleSheet);
+        }
+    }
+
+    function changeFont(name) {
+        if (name === 'Default') {
+            currentFont = 'Default';
+            unlinkFontStyles();
+        } else if (name !== currentFont) {
+            currentFont = name;
+            unlinkFontStyles();
+            linkElement = ExtensionUtils.addLinkedStyleSheet('http://fonts.googleapis.com/css?family=' + encodeURIComponent(name));
+            styleSheet = ExtensionUtils.addEmbeddedStyleSheet('.CodeMirror { font-family: "' + name + '" }');
+            preferences.set('selectedFont', currentFont);
+        }
+    }
+
+    // Initialization
     createFontMenu();
-    changeFont(preferences.getValue('selectedFont'));
+    changeFont(preferences.get('selectedFont') || 'Default');
 });
