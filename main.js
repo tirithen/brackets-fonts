@@ -12,7 +12,8 @@ define(function () {
         'Oxygen Mono',
         'PT Mono',
         'Share Tech Mono',
-        'Ubuntu Mono'
+        'Ubuntu Mono',
+        'Fira Mono'
     ];
     
 	var CommandManager = brackets.getModule('command/CommandManager'),
